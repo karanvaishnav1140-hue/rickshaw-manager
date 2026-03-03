@@ -3,82 +3,84 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Rickshaw WorkSmart</title>
+<title>Rickshaw Pro Manager</title>
 
-<!-- Libraries -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <style>
-body{margin:0;font-family:Arial;background:#0f1b2d;color:white;}
-.card{background:#18273f;padding:15px;margin:15px;border-radius:12px;}
-input{width:100%;padding:10px;margin:6px 0;border-radius:8px;border:none;background:#2b3c5a;color:white;}
-button{width:100%;padding:10px;margin-top:8px;border:none;border-radius:8px;background:#00c853;color:white;}
-.summary{display:flex;flex-wrap:wrap;justify-content:space-between;}
-.small-card{background:#1e3354;padding:10px;margin:5px 0;border-radius:8px;width:48%;text-align:center;}
-.navbar{position:fixed;bottom:0;width:100%;background:black;display:flex;justify-content:space-around;padding:10px 0;}
-.navbar div{color:white;font-size:14px;}
+body{margin:0;font-family:Segoe UI;background:#0b1420;color:white;}
+.card{background:#162235;margin:15px;padding:18px;border-radius:14px;box-shadow:0 0 15px rgba(0,255,150,0.1);}
+input{width:100%;padding:12px;margin:6px 0;border:none;border-radius:10px;background:#1e2d44;color:white;}
+button{width:100%;padding:12px;margin-top:8px;border:none;border-radius:10px;background:#00c853;color:white;font-weight:bold;}
+.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.box{background:#1c2b45;padding:15px;border-radius:12px;text-align:center;}
+.navbar{position:fixed;bottom:0;width:100%;background:#000;display:flex;justify-content:space-around;padding:10px 0;}
+.navbar div{font-size:13px;}
 .hidden{display:none;}
-.editBtn{background:orange;}
-.deleteBtn{background:red;}
+.big-number{font-size:26px;font-weight:bold;color:#00e676;}
+.editBtn{background:#ff9800;}
+.deleteBtn{background:#e53935;}
 </style>
 </head>
-
 <body>
 
 <!-- LOGIN -->
 <div id="loginScreen" class="card">
-<h2>Rickshaw WorkSmart</h2>
-<input type="text" id="userId" placeholder="Enter Your ID">
+<h2>Rickshaw Pro Manager</h2>
+<input type="text" id="userId" placeholder="Enter ID">
 <button onclick="login()">Login</button>
 </div>
 
-<!-- DAILY SCREEN -->
+<!-- DAILY -->
 <div id="dailyScreen" class="hidden">
-
-<div class="card">
-<h3>CNG Settings</h3>
-<input type="number" id="mileage" placeholder="Mileage (KM per Liter)">
-<input type="number" id="tankCapacity" value="4">
-</div>
-
 <div class="card">
 <h3>Daily Entry</h3>
-<input type="date" id="date">
-<input type="number" id="km" placeholder="KM Driven">
-<input type="number" id="earning" placeholder="Earning ₹">
-<button onclick="saveEntry()">Save Entry</button>
+<input type="date" id="d_date">
+<input type="number" id="d_km" placeholder="KM Driven">
+<input type="number" id="d_earning" placeholder="Earning ₹">
+<button onclick="saveDaily()">Save</button>
 </div>
 
 <div class="card">
 <h3>Summary</h3>
-<div class="summary">
-<div class="small-card">Total KM<br><span id="totalKM">0</span></div>
-<div class="small-card">Total ₹<br><span id="totalEarning">0</span></div>
-<div class="small-card">Fuel Used<br><span id="totalFuel">0</span></div>
-<div class="small-card">Fuel Expense<br>₹<span id="fuelCost">0</span></div>
-<div class="small-card">Maintenance<br>₹<span id="maintCostTotal">0</span></div>
-<div class="small-card">Net Profit<br>₹<span id="netProfit">0</span></div>
-<div class="small-card">KM Left<br><span id="kmLeft">0</span></div>
+<div class="summary-grid">
+<div class="box">Total KM<br><span id="totalKM">0</span></div>
+<div class="box">Fuel Used<br><span id="fuelUsed">0</span></div>
+<div class="box">Fuel Left<br><span id="fuelLeft">0</span></div>
+<div class="box">KM Can Run<br><span id="kmLeft">0</span></div>
 </div>
+<br>
+<div class="big-number">Total Earning ₹ <span id="totalEarning">0</span></div>
+<div class="big-number">Net Profit ₹ <span id="netProfit">0</span></div>
 </div>
 
 <div class="card">
-<h3>Entries</h3>
-<div id="entryList"></div>
+<h3>Daily Records</h3>
+<div id="dailyList"></div>
+</div>
 </div>
 
-</div>
-
-<!-- MONTHLY -->
-<div id="monthlyScreen" class="hidden">
+<!-- FUEL -->
+<div id="fuelScreen" class="hidden">
 <div class="card">
-<h3>Monthly Report</h3>
-<input type="month" id="monthFilter" onchange="filterMonth()">
-<div id="monthlyData"></div>
-<button onclick="exportPDF()">Export PDF</button>
-<button onclick="exportExcel()">Export Excel</button>
+<h3>Fuel Settings</h3>
+<input type="number" id="tankCapacity" value="4">
+<input type="number" id="mileage" placeholder="Mileage KM/L">
+</div>
+
+<div class="card">
+<h3>Refill Fuel</h3>
+<input type="date" id="f_date">
+<input type="number" id="f_liter" placeholder="Liter">
+<input type="number" id="f_price" placeholder="Price per Liter">
+<button onclick="addFuel()">Save Refill</button>
+</div>
+
+<div class="card">
+<h3>Fuel Status</h3>
+<div id="fuelStatus"></div>
 </div>
 </div>
 
@@ -86,234 +88,169 @@ button{width:100%;padding:10px;margin-top:8px;border:none;border-radius:8px;back
 <div id="maintScreen" class="hidden">
 <div class="card">
 <h3>Add Maintenance</h3>
-<input type="date" id="maintDate">
-<input type="text" id="maintNote" placeholder="Note">
-<input type="number" id="maintCost" placeholder="Cost ₹">
-<button onclick="addMaintenance()">Save</button>
+<input type="date" id="m_date">
+<input type="text" id="m_note">
+<input type="number" id="m_cost">
+<button onclick="addMaint()">Save</button>
 </div>
 
 <div class="card">
-<h3>Maintenance List</h3>
+<h3>Maintenance Records</h3>
 <div id="maintList"></div>
+</div>
+</div>
+
+<!-- REPORT -->
+<div id="reportScreen" class="hidden">
+<div class="card">
+<h3>Reports</h3>
+<input type="month" id="reportMonth">
+<button onclick="exportPDF()">Export PDF</button>
+<button onclick="exportExcel()">Export Excel</button>
 </div>
 </div>
 
 <!-- CHART -->
 <div id="chartScreen" class="hidden">
 <div class="card">
-<h3>Business Chart</h3>
 <canvas id="chartCanvas"></canvas>
 </div>
 </div>
 
-<!-- NAVIGATION -->
 <div class="navbar hidden" id="navbar">
-<div onclick="showScreen('daily')">📅 Daily</div>
-<div onclick="showScreen('monthly')">📊 Monthly</div>
-<div onclick="showScreen('maint')">🔧 Maint.</div>
-<div onclick="showScreen('chart')">📈 Chart</div>
+<div onclick="show('daily')">Daily</div>
+<div onclick="show('fuel')">Fuel</div>
+<div onclick="show('maint')">Maint</div>
+<div onclick="show('report')">Report</div>
+<div onclick="show('chart')">Chart</div>
 </div>
 
 <script>
-let currentUser="";
-let entries=[];
-let maintenance=[];
-let editIndex=-1;
-let chart;
+let user="";
+let daily=[],fuel=[],maint=[];
+let editIndex=-1,chart;
 
-// LOGIN
 function login(){
-if(!userId.value) return alert("Enter ID");
-currentUser=userId.value;
-localStorage.setItem("currentUser",currentUser);
+if(!userId.value)return;
+user=userId.value;
 loginScreen.classList.add("hidden");
 dailyScreen.classList.remove("hidden");
 navbar.classList.remove("hidden");
-loadData();
+load();
 }
 
-// SCREEN SWITCH
-function showScreen(s){
-["daily","monthly","maint","chart"].forEach(x=>{
+function show(s){
+["daily","fuel","maint","report","chart"].forEach(x=>{
 document.getElementById(x+"Screen").classList.add("hidden");
 });
 document.getElementById(s+"Screen").classList.remove("hidden");
 if(s==="chart") drawChart();
+if(s==="fuel") updateFuelStatus();
 }
 
-// SAVE ENTRY
-function saveEntry(){
-let entry={
-date:date.value,
-km:Number(km.value),
-earning:Number(earning.value)
-};
-if(!entry.date||!entry.km||!entry.earning) return alert("Fill all fields");
-
-if(editIndex===-1) entries.push(entry);
-else{ entries[editIndex]=entry; editIndex=-1; }
-
-saveData();
-clearForm();
-render();
+function saveDaily(){
+let obj={date:d_date.value,km:+d_km.value,earn:+d_earning.value};
+if(!obj.date||!obj.km||!obj.earn)return;
+if(editIndex===-1) daily.push(obj);
+else{daily[editIndex]=obj;editIndex=-1;}
+save(); render();
 }
 
-// EDIT
-function editEntry(i){
-let e=entries[i];
-date.value=e.date;
-km.value=e.km;
-earning.value=e.earning;
-editIndex=i;
+function addFuel(){
+fuel.push({date:f_date.value,l:+f_liter.value,p:+f_price.value});
+save(); updateFuelStatus(); render();
 }
 
-// DELETE
-function deleteEntry(i){
-entries.splice(i,1);
-saveData();
-render();
+function addMaint(){
+maint.push({date:m_date.value,n:m_note.value,c:+m_cost.value});
+save(); renderMaint(); render();
 }
 
-// RENDER CALCULATIONS
 function render(){
-let totalKM=0,totalEarning=0;
-entries.forEach(e=>{
-totalKM+=e.km;
-totalEarning+=e.earning;
-});
-
-let mileageVal=Number(mileage.value||0);
-let tankVal=Number(tankCapacity.value||4);
-
-let fuelUsed=mileageVal>0?(totalKM/mileageVal):0;
-let remaining=tankVal-fuelUsed;
-if(remaining<0) remaining=0;
-
-let fuelExpense=fuelUsed*80;
-let maintTotal=maintenance.reduce((s,m)=>s+m.cost,0);
-let profit=totalEarning-fuelExpense-maintTotal;
-
+let totalKM=daily.reduce((s,e)=>s+e.km,0);
+let totalEarn=daily.reduce((s,e)=>s+e.earn,0);
+let mileageVal=+mileage.value||0;
+let tank=+tankCapacity.value||4;
+let fuelUsed=mileageVal?totalKM/mileageVal:0;
+let fuelTotal=fuel.reduce((s,f)=>s+(f.l*f.p),0);
+let maintTotal=maint.reduce((s,m)=>s+m.c,0);
+let profit=totalEarn-fuelTotal-maintTotal;
+let fuelLeft=Math.max(tank-fuelUsed,0);
 totalKM.innerText=totalKM;
-totalEarning.innerText=totalEarning;
-totalFuel.innerText=fuelUsed.toFixed(2);
-fuelCost.innerText=fuelExpense.toFixed(0);
-maintCostTotal.innerText=maintTotal;
+fuelUsed.innerText=fuelUsed.toFixed(2);
+fuelLeft.innerText=fuelLeft.toFixed(2);
+kmLeft.innerText=(fuelLeft*mileageVal).toFixed(1);
+totalEarning.innerText=totalEarn;
 netProfit.innerText=profit.toFixed(0);
-kmLeft.innerText=(remaining*mileageVal).toFixed(1);
-
-entryList.innerHTML="";
-entries.forEach((e,i)=>{
-entryList.innerHTML+=`
-<div style="background:#23395d;padding:8px;margin:5px;border-radius:8px">
-${e.date} | ${e.km} KM | ₹${e.earning}
-<br>
-<button class="editBtn" onclick="editEntry(${i})">Edit</button>
-<button class="deleteBtn" onclick="deleteEntry(${i})">Delete</button>
-</div>`;
+dailyList.innerHTML="";
+daily.forEach((d,i)=>{
+dailyList.innerHTML+=`<div>${d.date} | ${d.km} KM | ₹${d.earn}
+<button class="editBtn" onclick="editDaily(${i})">Edit</button>
+<button class="deleteBtn" onclick="deleteDaily(${i})">Delete</button></div>`;
 });
 }
 
-// MAINTENANCE
-function addMaintenance(){
-let m={
-date:maintDate.value,
-note:maintNote.value,
-cost:Number(maintCost.value||0)
-};
-maintenance.push(m);
-saveData();
-renderMaintenance();
-render();
+function updateFuelStatus(){
+let tank=+tankCapacity.value||4;
+let mileageVal=+mileage.value||0;
+let totalKM=daily.reduce((s,e)=>s+e.km,0);
+let fuelUsed=mileageVal?totalKM/mileageVal:0;
+let fuelLeft=Math.max(tank-fuelUsed,0);
+fuelStatus.innerHTML=`
+Tank Capacity: ${tank} L<br>
+Fuel Used: ${fuelUsed.toFixed(2)} L<br>
+Fuel Left: ${fuelLeft.toFixed(2)} L<br>
+KM Can Run: ${(fuelLeft*mileageVal).toFixed(1)} KM
+`;
 }
 
-function renderMaintenance(){
-maintList.innerHTML="";
-maintenance.forEach(m=>{
-maintList.innerHTML+=`<div>${m.date} | ${m.note} | ₹${m.cost}</div>`;
-});
+function editDaily(i){editIndex=i;d_date.value=daily[i].date;d_km.value=daily[i].km;d_earning.value=daily[i].earn;}
+function deleteDaily(i){daily.splice(i,1);save();render();}
+function renderMaint(){maintList.innerHTML="";maint.forEach(m=>maintList.innerHTML+=`${m.date} | ${m.n} | ₹${m.c}<br>`);}
+
+function drawChart(){
+let earn=daily.reduce((s,e)=>s+e.earn,0);
+let fuelExp=fuel.reduce((s,f)=>s+(f.l*f.p),0);
+let maintExp=maint.reduce((s,m)=>s+m.c,0);
+let profit=earn-fuelExp-maintExp;
+if(chart)chart.destroy();
+chart=new Chart(chartCanvas,{type:'bar',data:{
+labels:['Earning','Fuel','Maintenance','Profit'],
+datasets:[{data:[earn,fuelExp,maintExp,profit],
+backgroundColor:['#00e676','#ff5252','#ff9800','#2979ff']}]
+}});
 }
 
-// MONTH FILTER
-function filterMonth(){
-let month=monthFilter.value;
-let total=0;
-entries.forEach(e=>{
-if(e.date.startsWith(month)) total+=e.earning;
-});
-monthlyData.innerHTML="Total Earning: ₹"+total;
-}
-
-// EXPORT PDF
 function exportPDF(){
 const {jsPDF}=window.jspdf;
-const doc=new jsPDF();
-let month=monthFilter.value;
-let y=10;
-doc.text("Monthly Report - "+month,10,y);
-y+=10;
-entries.forEach(e=>{
-if(e.date.startsWith(month)){
-doc.text(`${e.date} | ₹${e.earning}`,10,y);
-y+=8;
-}
-});
-doc.save("Monthly_Report.pdf");
+let doc=new jsPDF();
+doc.text("Rickshaw Monthly Report",10,10);
+daily.forEach((d,i)=>doc.text(`${d.date} | ₹${d.earn}`,10,20+(i*8)));
+doc.save("Report.pdf");
 }
 
-// EXPORT EXCEL
 function exportExcel(){
-let month=monthFilter.value;
 let rows=[["Date","KM","Earning"]];
-entries.forEach(e=>{
-if(e.date.startsWith(month))
-rows.push([e.date,e.km,e.earning]);
-});
+daily.forEach(d=>rows.push([d.date,d.km,d.earn]));
 let wb=XLSX.utils.book_new();
 let ws=XLSX.utils.aoa_to_sheet(rows);
 XLSX.utils.book_append_sheet(wb,ws,"Report");
-XLSX.writeFile(wb,"Monthly_Report.xlsx");
+XLSX.writeFile(wb,"Report.xlsx");
 }
 
-// CHART
-function drawChart(){
-let totalEarning=entries.reduce((s,e)=>s+e.earning,0);
-let mileageVal=Number(mileage.value||0);
-let fuelUsed=mileageVal>0?(entries.reduce((s,e)=>s+e.km,0)/mileageVal):0;
-let fuelExpense=fuelUsed*80;
-let maintTotal=maintenance.reduce((s,m)=>s+m.cost,0);
-let profit=totalEarning-fuelExpense-maintTotal;
-
-if(chart) chart.destroy();
-
-chart=new Chart(chartCanvas,{
-type:"bar",
-data:{
-labels:["Earning","Fuel Expense","Maintenance","Profit"],
-datasets:[{
-data:[totalEarning,fuelExpense,maintTotal,profit],
-backgroundColor:["#00e676","#ff5252","#ffab00","#2979ff"]
-}]
-}
-});
+function save(){
+localStorage.setItem(user+"_daily",JSON.stringify(daily));
+localStorage.setItem(user+"_fuel",JSON.stringify(fuel));
+localStorage.setItem(user+"_maint",JSON.stringify(maint));
 }
 
-// SAVE & LOAD
-function saveData(){
-localStorage.setItem(currentUser+"_entries",JSON.stringify(entries));
-localStorage.setItem(currentUser+"_maint",JSON.stringify(maintenance));
-}
-
-function loadData(){
-entries=JSON.parse(localStorage.getItem(currentUser+"_entries"))||[];
-maintenance=JSON.parse(localStorage.getItem(currentUser+"_maint"))||[];
+function load(){
+daily=JSON.parse(localStorage.getItem(user+"_daily"))||[];
+fuel=JSON.parse(localStorage.getItem(user+"_fuel"))||[];
+maint=JSON.parse(localStorage.getItem(user+"_maint"))||[];
 render();
-renderMaintenance();
-}
-
-function clearForm(){
-date.value="";
-km.value="";
-earning.value="";
+renderMaint();
+updateFuelStatus();
 }
 </script>
 
