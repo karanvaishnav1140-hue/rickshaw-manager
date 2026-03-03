@@ -1,15 +1,21 @@
-self.addEventListener('install', e => {
-e.waitUntil(
-caches.open('rickshaw-cache').then(cache => {
-return cache.addAll(['index.html']);
-})
-);
-});
-
-self.addEventListener('fetch', e => {
-e.respondWith(
-caches.match(e.request).then(response => {
-return response || fetch(e.request);
-})
-);
-});
+{
+  "name": "Rickshaw Business Control",
+  "short_name": "Rickshaw App",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#007bff",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
