@@ -1,18 +1,14 @@
-const CACHE_NAME = "rickshaw-app-v1";
+const CACHE_NAME = "rickshaw-pro-v2";
 
 const urlsToCache = [
-  "index.html",
-  "style.css",
-  "script.js",
-  "manifest.json"
+  "/",
+  "/index.html"
 ];
 
 self.addEventListener("install", event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => {
-        return cache.addAll(urlsToCache);
-      })
+      .then(cache => cache.addAll(urlsToCache))
   );
 });
 
