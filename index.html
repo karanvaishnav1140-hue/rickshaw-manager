@@ -11,22 +11,20 @@
 
 <style>
 body{margin:0;font-family:Segoe UI;background:#0b1420;color:white;}
-.card{background:#162235;margin:15px;padding:18px;border-radius:14px;box-shadow:0 0 15px rgba(0,255,150,0.1);}
+.card{background:#162235;margin:15px;padding:18px;border-radius:14px;}
 input{width:100%;padding:12px;margin:6px 0;border:none;border-radius:10px;background:#1e2d44;color:white;}
 button{width:100%;padding:12px;margin-top:8px;border:none;border-radius:10px;background:#00c853;color:white;font-weight:bold;}
 .summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .box{background:#1c2b45;padding:15px;border-radius:12px;text-align:center;}
 .navbar{position:fixed;bottom:0;width:100%;background:#000;display:flex;justify-content:space-around;padding:10px 0;}
-.navbar div{font-size:13px;}
 .hidden{display:none;}
-.big-number{font-size:26px;font-weight:bold;color:#00e676;}
 .editBtn{background:#ff9800;}
 .deleteBtn{background:#e53935;}
+.big-number{font-size:20px;margin-top:10px;}
 </style>
 </head>
 <body>
 
-<!-- LOGIN -->
 <div id="loginScreen" class="card">
 <h2>Rickshaw Pro Manager</h2>
 <input type="text" id="userId" placeholder="Enter ID">
@@ -46,12 +44,14 @@ button{width:100%;padding:12px;margin-top:8px;border:none;border-radius:10px;bac
 <div class="card">
 <h3>Summary</h3>
 <div class="summary-grid">
-<div class="box">Total KM<br><span id="totalKM">0</span></div>
+<div class="box">Lifetime KM<br><span id="totalKMAll">0</span></div>
+<div class="box">KM Since Fuel<br><span id="fuelKMBox">0</span></div>
 <div class="box">Fuel Used<br><span id="fuelUsed">0</span></div>
 <div class="box">Fuel Left<br><span id="fuelLeft">0</span></div>
 <div class="box">KM Can Run<br><span id="kmLeft">0</span></div>
 </div>
-<br>
+<button onclick="resetFuelKM()" style="background:#ff5252;margin-top:10px">Reset Fuel KM</button>
+
 <div class="big-number">Total Earning ₹ <span id="totalEarning">0</span></div>
 <div class="big-number">Net Profit ₹ <span id="netProfit">0</span></div>
 </div>
@@ -82,15 +82,20 @@ button{width:100%;padding:12px;margin-top:8px;border:none;border-radius:10px;bac
 <h3>Fuel Status</h3>
 <div id="fuelStatus"></div>
 </div>
+
+<div class="card">
+<h3>Fuel Records</h3>
+<div id="fuelList"></div>
+</div>
 </div>
 
-<!-- MAINTENANCE -->
+<!-- MAINT -->
 <div id="maintScreen" class="hidden">
 <div class="card">
 <h3>Add Maintenance</h3>
 <input type="date" id="m_date">
-<input type="text" id="m_note">
-<input type="number" id="m_cost">
+<input type="text" id="m_note" placeholder="Note">
+<input type="number" id="m_cost" placeholder="Cost ₹">
 <button onclick="addMaint()">Save</button>
 </div>
 
@@ -103,7 +108,7 @@ button{width:100%;padding:12px;margin-top:8px;border:none;border-radius:10px;bac
 <!-- REPORT -->
 <div id="reportScreen" class="hidden">
 <div class="card">
-<h3>Reports</h3>
+<h3>Monthly Report</h3>
 <input type="month" id="reportMonth">
 <button onclick="exportPDF()">Export PDF</button>
 <button onclick="exportExcel()">Export Excel</button>
@@ -114,6 +119,7 @@ button{width:100%;padding:12px;margin-top:8px;border:none;border-radius:10px;bac
 <div id="chartScreen" class="hidden">
 <div class="card">
 <canvas id="chartCanvas"></canvas>
+<div id="chartNumbers" style="margin-top:15px"></div>
 </div>
 </div>
 
@@ -128,7 +134,8 @@ button{width:100%;padding:12px;margin-top:8px;border:none;border-radius:10px;bac
 <script>
 let user="";
 let daily=[],fuel=[],maint=[];
-let editIndex=-1,chart;
+let editIndex=-1,fuelEditIndex=-1;
+let fuelKM=0,chart;
 
 function login(){
 if(!userId.value)return;
@@ -140,91 +147,139 @@ load();
 }
 
 function show(s){
-["daily","fuel","maint","report","chart"].forEach(x=>{
-document.getElementById(x+"Screen").classList.add("hidden");
-});
+["daily","fuel","maint","report","chart"].forEach(x=>document.getElementById(x+"Screen").classList.add("hidden"));
 document.getElementById(s+"Screen").classList.remove("hidden");
-if(s==="chart") drawChart();
-if(s==="fuel") updateFuelStatus();
+if(s==="chart")drawChart();
+if(s==="fuel")updateFuelStatus();
 }
 
 function saveDaily(){
 let obj={date:d_date.value,km:+d_km.value,earn:+d_earning.value};
 if(!obj.date||!obj.km||!obj.earn)return;
-if(editIndex===-1) daily.push(obj);
+if(editIndex===-1){daily.push(obj);fuelKM+=obj.km;}
 else{daily[editIndex]=obj;editIndex=-1;}
-save(); render();
+save();render();
+}
+
+function editDaily(i){
+editIndex=i;
+d_date.value=daily[i].date;
+d_km.value=daily[i].km;
+d_earning.value=daily[i].earn;
+}
+
+function deleteDaily(i){
+fuelKM-=daily[i].km;
+daily.splice(i,1);
+save();render();
+}
+
+function resetFuelKM(){
+fuelKM=0;
+save();
+render();
 }
 
 function addFuel(){
-fuel.push({date:f_date.value,l:+f_liter.value,p:+f_price.value});
-save(); updateFuelStatus(); render();
+let obj={date:f_date.value,liter:+f_liter.value,price:+f_price.value};
+if(!obj.date||!obj.liter||!obj.price)return;
+if(fuelEditIndex===-1)fuel.push(obj);
+else{fuel[fuelEditIndex]=obj;fuelEditIndex=-1;}
+save();renderFuel();updateFuelStatus();drawChart();
+}
+
+function editFuel(i){
+fuelEditIndex=i;
+f_date.value=fuel[i].date;
+f_liter.value=fuel[i].liter;
+f_price.value=fuel[i].price;
+}
+
+function deleteFuel(i){
+fuel.splice(i,1);
+save();renderFuel();updateFuelStatus();drawChart();
 }
 
 function addMaint(){
 maint.push({date:m_date.value,n:m_note.value,c:+m_cost.value});
-save(); renderMaint(); render();
+save();renderMaint();drawChart();
 }
 
 function render(){
-let totalKM=daily.reduce((s,e)=>s+e.km,0);
+let lifetimeKM=daily.reduce((s,e)=>s+e.km,0);
 let totalEarn=daily.reduce((s,e)=>s+e.earn,0);
 let mileageVal=+mileage.value||0;
 let tank=+tankCapacity.value||4;
-let fuelUsed=mileageVal?totalKM/mileageVal:0;
-let fuelTotal=fuel.reduce((s,f)=>s+(f.l*f.p),0);
-let maintTotal=maint.reduce((s,m)=>s+m.c,0);
-let profit=totalEarn-fuelTotal-maintTotal;
-let fuelLeft=Math.max(tank-fuelUsed,0);
-totalKM.innerText=totalKM;
-fuelUsed.innerText=fuelUsed.toFixed(2);
-fuelLeft.innerText=fuelLeft.toFixed(2);
-kmLeft.innerText=(fuelLeft*mileageVal).toFixed(1);
+let fuelUsedVal=mileageVal?fuelKM/mileageVal:0;
+let fuelLeftVal=Math.max(tank-fuelUsedVal,0);
+let fuelExpense=fuel.reduce((s,f)=>s+(f.liter*f.price),0);
+let maintExp=maint.reduce((s,m)=>s+m.c,0);
+let profit=totalEarn-(fuelExpense+maintExp);
+
+totalKMAll.innerText=lifetimeKM;
+fuelKMBox.innerText=fuelKM;
+fuelUsed.innerText=fuelUsedVal.toFixed(2);
+fuelLeft.innerText=fuelLeftVal.toFixed(2);
+kmLeft.innerText=(fuelLeftVal*mileageVal).toFixed(1);
 totalEarning.innerText=totalEarn;
 netProfit.innerText=profit.toFixed(0);
+
 dailyList.innerHTML="";
 daily.forEach((d,i)=>{
-dailyList.innerHTML+=`<div>${d.date} | ${d.km} KM | ₹${d.earn}
+dailyList.innerHTML+=`${d.date} | ${d.km} KM | ₹${d.earn}
 <button class="editBtn" onclick="editDaily(${i})">Edit</button>
-<button class="deleteBtn" onclick="deleteDaily(${i})">Delete</button></div>`;
+<button class="deleteBtn" onclick="deleteDaily(${i})">Delete</button><br>`;
+});
+}
+
+function renderFuel(){
+fuelList.innerHTML="";
+fuel.forEach((f,i)=>{
+fuelList.innerHTML+=`${f.date} | ${f.liter}L × ₹${f.price}
+<button class="editBtn" onclick="editFuel(${i})">Edit</button>
+<button class="deleteBtn" onclick="deleteFuel(${i})">Delete</button><br>`;
 });
 }
 
 function updateFuelStatus(){
-let tank=+tankCapacity.value||4;
 let mileageVal=+mileage.value||0;
-let totalKM=daily.reduce((s,e)=>s+e.km,0);
-let fuelUsed=mileageVal?totalKM/mileageVal:0;
-let fuelLeft=Math.max(tank-fuelUsed,0);
-fuelStatus.innerHTML=`
-Tank Capacity: ${tank} L<br>
-Fuel Used: ${fuelUsed.toFixed(2)} L<br>
-Fuel Left: ${fuelLeft.toFixed(2)} L<br>
-KM Can Run: ${(fuelLeft*mileageVal).toFixed(1)} KM
-`;
+let tank=+tankCapacity.value||4;
+let fuelUsedVal=mileageVal?fuelKM/mileageVal:0;
+let fuelLeftVal=Math.max(tank-fuelUsedVal,0);
+fuelStatus.innerHTML=`Tank: ${tank}L<br>Fuel Used: ${fuelUsedVal.toFixed(2)}L<br>Fuel Left: ${fuelLeftVal.toFixed(2)}L<br>KM Can Run: ${(fuelLeftVal*mileageVal).toFixed(1)}KM`;
 }
 
-function editDaily(i){editIndex=i;d_date.value=daily[i].date;d_km.value=daily[i].km;d_earning.value=daily[i].earn;}
-function deleteDaily(i){daily.splice(i,1);save();render();}
-function renderMaint(){maintList.innerHTML="";maint.forEach(m=>maintList.innerHTML+=`${m.date} | ${m.n} | ₹${m.c}<br>`);}
+function renderMaint(){
+maintList.innerHTML="";
+maint.forEach(m=>maintList.innerHTML+=`${m.date} | ${m.n} | ₹${m.c}<br>`);
+}
 
 function drawChart(){
 let earn=daily.reduce((s,e)=>s+e.earn,0);
-let fuelExp=fuel.reduce((s,f)=>s+(f.l*f.p),0);
+let fuelExp=fuel.reduce((s,f)=>s+(f.liter*f.price),0);
 let maintExp=maint.reduce((s,m)=>s+m.c,0);
-let profit=earn-fuelExp-maintExp;
+let totalExpense=fuelExp+maintExp;
+let profit=earn-totalExpense;
+
 if(chart)chart.destroy();
-chart=new Chart(chartCanvas,{type:'bar',data:{
-labels:['Earning','Fuel','Maintenance','Profit'],
+
+chart=new Chart(chartCanvas,{
+type:'bar',
+data:{labels:['Earning','Fuel','Maintenance','Profit'],
 datasets:[{data:[earn,fuelExp,maintExp,profit],
 backgroundColor:['#00e676','#ff5252','#ff9800','#2979ff']}]
 }});
+
+chartNumbers.innerHTML=
+`<b>Total Earning:</b> ₹${earn.toFixed(0)}<br>
+<b>Total Expenses:</b> ₹${totalExpense.toFixed(0)}<br>
+<b>Net Profit:</b> ₹${profit.toFixed(0)}`;
 }
 
 function exportPDF(){
 const {jsPDF}=window.jspdf;
 let doc=new jsPDF();
-doc.text("Rickshaw Monthly Report",10,10);
+doc.text("Monthly Report",10,10);
 daily.forEach((d,i)=>doc.text(`${d.date} | ₹${d.earn}`,10,20+(i*8)));
 doc.save("Report.pdf");
 }
@@ -242,17 +297,16 @@ function save(){
 localStorage.setItem(user+"_daily",JSON.stringify(daily));
 localStorage.setItem(user+"_fuel",JSON.stringify(fuel));
 localStorage.setItem(user+"_maint",JSON.stringify(maint));
+localStorage.setItem(user+"_fuelKM",fuelKM);
 }
 
 function load(){
 daily=JSON.parse(localStorage.getItem(user+"_daily"))||[];
 fuel=JSON.parse(localStorage.getItem(user+"_fuel"))||[];
 maint=JSON.parse(localStorage.getItem(user+"_maint"))||[];
-render();
-renderMaint();
-updateFuelStatus();
+fuelKM=Number(localStorage.getItem(user+"_fuelKM"))||0;
+render();renderFuel();renderMaint();updateFuelStatus();
 }
 </script>
-
 </body>
 </html>
