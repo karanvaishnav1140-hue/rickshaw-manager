@@ -1,11 +1,14 @@
 {
-  "name": "Rickshaw Business Control",
-  "short_name": "Rickshaw App",
-  "start_url": "index.html",
+  "name": "Rickshaw Pro Manager",
+  "short_name": "RickshawPro",
+  "description": "Professional rickshaw business manager for daily earning, fuel tracking, maintenance and profit reports.",
+  "start_url": "/index.html",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#007bff",
+  "background_color": "#0b1420",
+  "theme_color": "#00c853",
   "orientation": "portrait",
+  "lang": "en",
   "icons": [
     {
       "src": "icon-192.png",
