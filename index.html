@@ -5,82 +5,35 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Rickshaw WorkSmart</title>
 
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+
+<!-- PDF + Excel -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
 <style>
-body{
-margin:0;
-font-family:Arial;
-background:#0f1b2d;
-color:white;
-}
-.card{
-background:#18273f;
-padding:15px;
-margin:15px;
-border-radius:12px;
-}
-input,select{
-width:100%;
-padding:10px;
-margin:6px 0;
-border-radius:8px;
-border:none;
-background:#2b3c5a;
-color:white;
-}
-button{
-width:100%;
-padding:12px;
-margin-top:10px;
-border:none;
-border-radius:10px;
-background:#00c853;
-color:white;
-font-weight:bold;
-}
-.summary{
-display:flex;
-flex-wrap:wrap;
-justify-content:space-between;
-}
-.small-card{
-background:#1e3354;
-padding:10px;
-margin:5px 0;
-border-radius:8px;
-width:48%;
-text-align:center;
-}
-.navbar{
-position:fixed;
-bottom:0;
-width:100%;
-background:black;
-display:flex;
-justify-content:space-around;
-padding:10px 0;
-}
-.navbar div{
-color:white;
-text-align:center;
-font-size:14px;
-}
+body{margin:0;font-family:Arial;background:#0f1b2d;color:white;}
+.card{background:#18273f;padding:15px;margin:15px;border-radius:12px;}
+input{width:100%;padding:10px;margin:6px 0;border-radius:8px;border:none;background:#2b3c5a;color:white;}
+button{width:100%;padding:12px;margin-top:10px;border:none;border-radius:10px;background:#00c853;color:white;font-weight:bold;}
+.summary{display:flex;flex-wrap:wrap;justify-content:space-between;}
+.small-card{background:#1e3354;padding:10px;margin:5px 0;border-radius:8px;width:48%;text-align:center;}
+.navbar{position:fixed;bottom:0;width:100%;background:black;display:flex;justify-content:space-around;padding:10px 0;}
+.navbar div{color:white;text-align:center;font-size:14px;}
 .hidden{display:none;}
-h2{margin:5px 0;}
 </style>
 </head>
 
 <body>
 
-<!-- LOGIN -->
 <div id="loginScreen" class="card">
 <h2>Rickshaw WorkSmart</h2>
 <input type="text" id="userId" placeholder="Enter Your ID">
 <button onclick="login()">Login</button>
 </div>
 
-<!-- DAILY SCREEN -->
 <div id="dailyScreen" class="hidden">
-
 <div class="card">
 <h2>CNG Settings</h2>
 <input type="number" id="mileage" placeholder="Mileage (KM per KG)">
@@ -97,7 +50,7 @@ h2{margin:5px 0;}
 </div>
 
 <div class="card">
-<h2>Today Summary</h2>
+<h2>Summary</h2>
 <div class="summary">
 <div class="small-card">Total KM<br><span id="totalKM">0</span></div>
 <div class="small-card">Total ₹<br><span id="totalEarning">0</span></div>
@@ -112,19 +65,18 @@ h2{margin:5px 0;}
 <h2>Entries</h2>
 <div id="entryList"></div>
 </div>
-
 </div>
 
-<!-- MONTHLY SCREEN -->
 <div id="monthlyScreen" class="hidden">
 <div class="card">
 <h2>Monthly Report</h2>
 <input type="month" id="monthFilter" onchange="filterMonth()">
 <div id="monthlyData"></div>
+<button onclick="exportPDF()">Export PDF</button>
+<button onclick="exportExcel()">Export Excel</button>
 </div>
 </div>
 
-<!-- MAINTENANCE SCREEN -->
 <div id="maintScreen" class="hidden">
 <div class="card">
 <h2>Maintenance</h2>
@@ -135,20 +87,10 @@ h2{margin:5px 0;}
 </div>
 </div>
 
-<!-- CHART SCREEN -->
-<div id="chartScreen" class="hidden">
-<div class="card">
-<h2>Earning Chart</h2>
-<canvas id="chart" height="200"></canvas>
-</div>
-</div>
-
-<!-- NAVBAR -->
 <div class="navbar hidden" id="navbar">
 <div onclick="showScreen('daily')">📅 Daily</div>
 <div onclick="showScreen('monthly')">📊 Monthly</div>
 <div onclick="showScreen('maint')">🔧 Maint.</div>
-<div onclick="showScreen('chart')">📈 Charts</div>
 </div>
 
 <script>
@@ -157,30 +99,23 @@ let data=[];
 let maintenance=[];
 
 function login(){
-const id=document.getElementById("userId").value;
+const id=userId.value;
 if(!id)return alert("Enter ID");
 currentUser=id;
 localStorage.setItem("currentUser",id);
-document.getElementById("loginScreen").classList.add("hidden");
-document.getElementById("dailyScreen").classList.remove("hidden");
-document.getElementById("navbar").classList.remove("hidden");
+loginScreen.classList.add("hidden");
+dailyScreen.classList.remove("hidden");
+navbar.classList.remove("hidden");
 loadData();
 }
 
-function showScreen(screen){
-["daily","monthly","maint","chart"].forEach(s=>{
-document.getElementById(s+"Screen").classList.add("hidden");
-});
-document.getElementById(screen+"Screen").classList.remove("hidden");
+function showScreen(s){
+["daily","monthly","maint"].forEach(x=>document.getElementById(x+"Screen").classList.add("hidden"));
+document.getElementById(s+"Screen").classList.remove("hidden");
 }
 
 function addEntry(){
-const entry={
-date:date.value,
-km:Number(km.value),
-earning:Number(earning.value),
-cng:Number(cngFilled.value||0)
-};
+const entry={date:date.value,km:Number(km.value),earning:Number(earning.value),cng:Number(cngFilled.value||0)};
 if(!entry.date)return alert("Enter date");
 data.push(entry);
 saveData();
@@ -194,8 +129,7 @@ data.forEach((e,i)=>{
 totalKM+=e.km;
 totalEarning+=e.earning;
 totalCNG+=e.cng;
-entryList.innerHTML+=`
-<div style="background:#23395d;padding:8px;margin:5px;border-radius:8px">
+entryList.innerHTML+=`<div style="background:#23395d;padding:8px;margin:5px;border-radius:8px">
 ${e.date} | ${e.km} KM | ₹${e.earning}
 <button onclick="deleteEntry(${i})" style="background:red;margin-top:5px">Delete</button>
 </div>`;
@@ -203,50 +137,47 @@ ${e.date} | ${e.km} KM | ₹${e.earning}
 totalKMSpan=document.getElementById("totalKM");
 totalKMSpan.innerText=totalKM;
 totalEarning.innerText=totalEarning;
-totalCNGSpan=document.getElementById("totalCNG");
-totalCNGSpan.innerText=totalCNG;
-
-const mileageVal=Number(mileage.value||0);
-const tankVal=Number(tankCapacity.value||0);
-const used=totalCNG;
-const remaining=tankVal-used;
-kmLeft.innerText=Math.max(remaining*mileageVal,0);
-
-const cngPrice=80;
-const cngExpense=used*cngPrice;
+totalCNG.innerText=totalCNG;
+const remaining=(tankCapacity.value||0)-totalCNG;
+kmLeft.innerText=Math.max(remaining*(mileage.value||0),0);
+const cngExpense=totalCNG*80;
 cngCost.innerText=cngExpense;
 netProfit.innerText=totalEarning-cngExpense;
 }
 
-function deleteEntry(i){
-data.splice(i,1);
-saveData();
-render();
-}
-
-function saveData(){
-localStorage.setItem(currentUser+"_data",JSON.stringify(data));
-}
-
-function loadData(){
-data=JSON.parse(localStorage.getItem(currentUser+"_data"))||[];
-render();
-}
+function deleteEntry(i){data.splice(i,1);saveData();render();}
+function saveData(){localStorage.setItem(currentUser+"_data",JSON.stringify(data));}
+function loadData(){data=JSON.parse(localStorage.getItem(currentUser+"_data"))||[];render();}
 
 function filterMonth(){
-const month=monthFilter.value;
+let month=monthFilter.value;
 let total=0;
-data.forEach(e=>{
-if(e.date.startsWith(month)) total+=e.earning;
-});
+data.forEach(e=>{if(e.date.startsWith(month))total+=e.earning;});
 monthlyData.innerHTML="Total Earning: ₹"+total;
 }
 
+function exportPDF(){
+const {jsPDF}=window.jspdf;
+const doc=new jsPDF();
+let month=monthFilter.value;
+let y=10;
+doc.text("Monthly Report - "+month,10,y);y+=10;
+data.forEach(e=>{if(e.date.startsWith(month)){doc.text(`${e.date} | ₹${e.earning}`,10,y);y+=8;}});
+doc.save("Monthly_Report.pdf");
+}
+
+function exportExcel(){
+let month=monthFilter.value;
+let rows=[["Date","KM","Earning","CNG"]];
+data.forEach(e=>{if(e.date.startsWith(month))rows.push([e.date,e.km,e.earning,e.cng]);});
+let wb=XLSX.utils.book_new();
+let ws=XLSX.utils.aoa_to_sheet(rows);
+XLSX.utils.book_append_sheet(wb,ws,"Report");
+XLSX.writeFile(wb,"Monthly_Report.xlsx");
+}
+
 function addMaint(){
-const note=maintNote.value;
-const cost=Number(maintCost.value);
-maintenance.push({note,cost});
-maintList.innerHTML+=`<div>${note} - ₹${cost}</div>`;
+maintList.innerHTML+=`<div>${maintNote.value} - ₹${maintCost.value}</div>`;
 }
 </script>
 
