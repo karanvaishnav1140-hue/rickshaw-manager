@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+l<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
@@ -24,10 +24,10 @@ th {background:#007bff; color:white;}
 
 <select onchange="changeLang(this.value)" class="lang-btn">
 <option value="en">English</option>
-<option value="hi">हिंदी</option>
+<option value="hi"></option>
 </select>
 
-<h2 id="title">🚕 Rickshaw Tracker</h2>
+<h2 id="title"> Rickshaw Tracker</h2>
 
 <div id="loginBox" class="box">
 <h3 id="passTitle">Enter Password</h3>
@@ -40,8 +40,8 @@ th {background:#007bff; color:white;}
 <div class="box">
 <input type="date" id="date">
 <input type="number" id="km" placeholder="Total KM">
-<input type="number" id="earning" placeholder="Earning ₹">
-<input type="number" id="fuel" placeholder="Fuel ₹">
+<input type="number" id="earning" placeholder="Earning ">
+<input type="number" id="fuel" placeholder="Fuel ">
 <button onclick="save()" id="saveBtn">Save</button>
 </div>
 
@@ -79,7 +79,7 @@ let chart;
 
 const text={
 en:{
-title:"🚕 Rickshaw Tracker",
+title:" Rickshaw Tracker",
 passTitle:"Enter Password",
 login:"Login",
 save:"Save",
@@ -91,16 +91,16 @@ fuel:"Fuel",
 profit:"Profit"
 },
 hi:{
-title:"🚕 रिक्शा ट्रैकर",
-passTitle:"पासवर्ड डालें",
-login:"लॉगिन",
-save:"सेव करें",
-monthly:"मासिक रिपोर्ट",
-date:"तारीख",
-km:"किलोमीटर",
-earning:"कमाई",
-fuel:"ईंधन",
-profit:"मुनाफा"
+title:"  ",
+passTitle:" ",
+login:"",
+save:" ",
+monthly:" ",
+date:"",
+km:"",
+earning:"",
+fuel:"",
+profit:""
 }
 };
 
@@ -150,21 +150,24 @@ totalE+=r.earning;
 totalF+=r.fuel;
 totalKM+=r.km;
 
-table.innerHTML+=`
-<tr>
+tbody.innerHTML+=`<tr>
 <td>${r.date}</td>
 <td>${r.km}</td>
 <td>₹${r.earning}</td>
 <td>₹${r.fuel}</td>
 <td>₹${r.profit}</td>
+<td>
+<button onclick="editRecord(${i})">Edit</button>
+<button onclick="deleteRecord(${i})" style="background:red">Delete</button>
+</td>
 </tr>`;
 });
 
 document.getElementById("monthly").innerHTML=
 "Total KM: "+totalKM+
-"<br>Total Earning: ₹"+totalE+
-"<br>Total Fuel: ₹"+totalF+
-"<br><b>Net Profit: ₹"+(totalE-totalF)+"</b>";
+"<br>Total Earning: "+totalE+
+"<br>Total Fuel: "+totalF+
+"<br><b>Net Profit: "+(totalE-totalF)+"</b>";
 
 drawChart();
 }
@@ -175,8 +178,26 @@ let data=records.map(r=>r.earning);
 if(chart) chart.destroy();
 chart=new Chart(document.getElementById("chart"),{
 type:'bar',
-data:{labels:labels,datasets:[{label:'Daily ₹',data:data}]}
+data:{labels:labels,datasets:[{label:'Daily ',data:data}]}
 });
+}
+function deleteRecord(index){
+  if(confirm("Delete this entry?")){
+    records.splice(index,1);
+    localStorage.setItem("records",JSON.stringify(records));
+    loadData();
+  }
+}
+
+function editRecord(index){
+  let r = records[index];
+  document.getElementById("date").value = r.date;
+  document.getElementById("km").value = r.km;
+  document.getElementById("earning").value = r.earning;
+  document.getElementById("fuel").value = r.fuel;
+  records.splice(index,1);
+  localStorage.setItem("records",JSON.stringify(records));
+  loadData();
 }
 
 if('serviceWorker' in navigator){
@@ -185,4 +206,4 @@ navigator.serviceWorker.register('service-worker.js');
 </script>
 
 </body>
-  </html>
+</html>
