@@ -5,10 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Rickshaw WorkSmart</title>
 
-<!-- PWA -->
-<link rel="manifest" href="manifest.json">
-
-<!-- PDF + Excel -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
@@ -22,6 +18,8 @@ button{width:100%;padding:12px;margin-top:10px;border:none;border-radius:10px;ba
 .navbar{position:fixed;bottom:0;width:100%;background:black;display:flex;justify-content:space-around;padding:10px 0;}
 .navbar div{color:white;text-align:center;font-size:14px;}
 .hidden{display:none;}
+.deleteBtn{background:red;margin-top:5px;}
+.editBtn{background:orange;margin-top:5px;}
 </style>
 </head>
 
@@ -34,10 +32,11 @@ button{width:100%;padding:12px;margin-top:10px;border:none;border-radius:10px;ba
 </div>
 
 <div id="dailyScreen" class="hidden">
+
 <div class="card">
 <h2>CNG Settings</h2>
-<input type="number" id="mileage" placeholder="Mileage (KM per KG)">
-<input type="number" id="tankCapacity" placeholder="Cylinder Capacity (KG)">
+<input type="number" id="mileage" placeholder="Mileage (KM per Liter)">
+<input type="number" id="tankCapacity" value="4" placeholder="Tank Capacity (Liter)">
 </div>
 
 <div class="card">
@@ -45,8 +44,8 @@ button{width:100%;padding:12px;margin-top:10px;border:none;border-radius:10px;ba
 <input type="date" id="date">
 <input type="number" id="km" placeholder="KM Driven">
 <input type="number" id="earning" placeholder="Earning ₹">
-<input type="number" id="cngFilled" placeholder="CNG Filled (KG)">
-<button onclick="addEntry()">Save Entry</button>
+<input type="number" id="cngFilled" placeholder="CNG Filled (Liter)">
+<button onclick="saveEntry()">Save Entry</button>
 </div>
 
 <div class="card">
@@ -54,9 +53,9 @@ button{width:100%;padding:12px;margin-top:10px;border:none;border-radius:10px;ba
 <div class="summary">
 <div class="small-card">Total KM<br><span id="totalKM">0</span></div>
 <div class="small-card">Total ₹<br><span id="totalEarning">0</span></div>
-<div class="small-card">CNG Used<br><span id="totalCNG">0</span></div>
+<div class="small-card">Fuel Used<br><span id="totalFuel">0</span></div>
 <div class="small-card">KM Left<br><span id="kmLeft">0</span></div>
-<div class="small-card">CNG Expense<br>₹<span id="cngCost">0</span></div>
+<div class="small-card">Fuel Expense<br>₹<span id="fuelCost">0</span></div>
 <div class="small-card">Net Profit<br>₹<span id="netProfit">0</span></div>
 </div>
 </div>
@@ -65,6 +64,7 @@ button{width:100%;padding:12px;margin-top:10px;border:none;border-radius:10px;ba
 <h2>Entries</h2>
 <div id="entryList"></div>
 </div>
+
 </div>
 
 <div id="monthlyScreen" class="hidden">
@@ -77,32 +77,20 @@ button{width:100%;padding:12px;margin-top:10px;border:none;border-radius:10px;ba
 </div>
 </div>
 
-<div id="maintScreen" class="hidden">
-<div class="card">
-<h2>Maintenance</h2>
-<input type="text" id="maintNote" placeholder="Maintenance Note">
-<input type="number" id="maintCost" placeholder="Cost ₹">
-<button onclick="addMaint()">Save Maintenance</button>
-<div id="maintList"></div>
-</div>
-</div>
-
 <div class="navbar hidden" id="navbar">
 <div onclick="showScreen('daily')">📅 Daily</div>
 <div onclick="showScreen('monthly')">📊 Monthly</div>
-<div onclick="showScreen('maint')">🔧 Maint.</div>
 </div>
 
 <script>
 let currentUser="";
 let data=[];
-let maintenance=[];
+let editIndex=-1;
 
 function login(){
-const id=userId.value;
-if(!id)return alert("Enter ID");
-currentUser=id;
-localStorage.setItem("currentUser",id);
+if(!userId.value) return alert("Enter ID");
+currentUser=userId.value;
+localStorage.setItem("currentUser",currentUser);
 loginScreen.classList.add("hidden");
 dailyScreen.classList.remove("hidden");
 navbar.classList.remove("hidden");
@@ -110,49 +98,100 @@ loadData();
 }
 
 function showScreen(s){
-["daily","monthly","maint"].forEach(x=>document.getElementById(x+"Screen").classList.add("hidden"));
+["daily","monthly"].forEach(x=>document.getElementById(x+"Screen").classList.add("hidden"));
 document.getElementById(s+"Screen").classList.remove("hidden");
 }
 
-function addEntry(){
-const entry={date:date.value,km:Number(km.value),earning:Number(earning.value),cng:Number(cngFilled.value||0)};
-if(!entry.date)return alert("Enter date");
+function saveEntry(){
+const entry={
+date:date.value,
+km:Number(km.value),
+earning:Number(earning.value),
+fuel:Number(cngFilled.value||0)
+};
+
+if(!entry.date||!entry.km||!entry.earning) return alert("Fill all required fields");
+
+if(editIndex===-1){
 data.push(entry);
+}else{
+data[editIndex]=entry;
+editIndex=-1;
+}
+
+saveData();
+clearForm();
+render();
+}
+
+function editEntry(index){
+const e=data[index];
+date.value=e.date;
+km.value=e.km;
+earning.value=e.earning;
+cngFilled.value=e.fuel;
+editIndex=index;
+}
+
+function deleteEntry(index){
+data.splice(index,1);
 saveData();
 render();
 }
 
 function render(){
 entryList.innerHTML="";
-let totalKM=0,totalEarning=0,totalCNG=0;
+let totalKM=0,totalEarning=0,totalFuel=0;
+
 data.forEach((e,i)=>{
 totalKM+=e.km;
 totalEarning+=e.earning;
-totalCNG+=e.cng;
-entryList.innerHTML+=`<div style="background:#23395d;padding:8px;margin:5px;border-radius:8px">
+totalFuel+=e.fuel;
+
+entryList.innerHTML+=`
+<div style="background:#23395d;padding:8px;margin:5px;border-radius:8px">
 ${e.date} | ${e.km} KM | ₹${e.earning}
-<button onclick="deleteEntry(${i})" style="background:red;margin-top:5px">Delete</button>
+<br>
+<button class="editBtn" onclick="editEntry(${i})">Edit</button>
+<button class="deleteBtn" onclick="deleteEntry(${i})">Delete</button>
 </div>`;
 });
-totalKMSpan=document.getElementById("totalKM");
-totalKMSpan.innerText=totalKM;
-totalEarning.innerText=totalEarning;
-totalCNG.innerText=totalCNG;
-const remaining=(tankCapacity.value||0)-totalCNG;
-kmLeft.innerText=Math.max(remaining*(mileage.value||0),0);
-const cngExpense=totalCNG*80;
-cngCost.innerText=cngExpense;
-netProfit.innerText=totalEarning-cngExpense;
+
+document.getElementById("totalKM").innerText=totalKM;
+document.getElementById("totalEarning").innerText=totalEarning;
+document.getElementById("totalFuel").innerText=totalFuel;
+
+const mileageVal=Number(mileage.value||0);
+const tankVal=Number(tankCapacity.value||4);
+
+const remaining=tankVal-totalFuel;
+document.getElementById("kmLeft").innerText=Math.max(remaining*mileageVal,0);
+
+const fuelExpense=totalFuel*80;
+document.getElementById("fuelCost").innerText=fuelExpense;
+document.getElementById("netProfit").innerText=totalEarning-fuelExpense;
 }
 
-function deleteEntry(i){data.splice(i,1);saveData();render();}
-function saveData(){localStorage.setItem(currentUser+"_data",JSON.stringify(data));}
-function loadData(){data=JSON.parse(localStorage.getItem(currentUser+"_data"))||[];render();}
+function saveData(){
+localStorage.setItem(currentUser+"_data",JSON.stringify(data));
+}
+
+function loadData(){
+data=JSON.parse(localStorage.getItem(currentUser+"_data"))||[];
+render();
+}
+
+function clearForm(){
+date.value="";
+km.value="";
+earning.value="";
+cngFilled.value="";
+}
 
 function filterMonth(){
 let month=monthFilter.value;
 let total=0;
-data.forEach(e=>{if(e.date.startsWith(month))total+=e.earning;});
+data.forEach(e=>{if(e.date.startsWith(month)) total+=e.earning;});
 monthlyData.innerHTML="Total Earning: ₹"+total;
 }
 
@@ -161,23 +200,28 @@ const {jsPDF}=window.jspdf;
 const doc=new jsPDF();
 let month=monthFilter.value;
 let y=10;
-doc.text("Monthly Report - "+month,10,y);y+=10;
-data.forEach(e=>{if(e.date.startsWith(month)){doc.text(`${e.date} | ₹${e.earning}`,10,y);y+=8;}});
+doc.text("Monthly Report - "+month,10,y);
+y+=10;
+data.forEach(e=>{
+if(e.date.startsWith(month)){
+doc.text(`${e.date} | ₹${e.earning}`,10,y);
+y+=8;
+}
+});
 doc.save("Monthly_Report.pdf");
 }
 
 function exportExcel(){
 let month=monthFilter.value;
-let rows=[["Date","KM","Earning","CNG"]];
-data.forEach(e=>{if(e.date.startsWith(month))rows.push([e.date,e.km,e.earning,e.cng]);});
+let rows=[["Date","KM","Earning","Fuel(L)"]];
+data.forEach(e=>{
+if(e.date.startsWith(month))
+rows.push([e.date,e.km,e.earning,e.fuel]);
+});
 let wb=XLSX.utils.book_new();
 let ws=XLSX.utils.aoa_to_sheet(rows);
 XLSX.utils.book_append_sheet(wb,ws,"Report");
 XLSX.writeFile(wb,"Monthly_Report.xlsx");
-}
-
-function addMaint(){
-maintList.innerHTML+=`<div>${maintNote.value} - ₹${maintCost.value}</div>`;
 }
 </script>
 
