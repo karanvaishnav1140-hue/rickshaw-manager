@@ -7,19 +7,20 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 body{margin:0;font-family:Arial;background:#0f1b2d;color:white;}
 .card{background:#18273f;padding:15px;margin:15px;border-radius:12px;}
 input{width:100%;padding:10px;margin:6px 0;border-radius:8px;border:none;background:#2b3c5a;color:white;}
-button{width:100%;padding:12px;margin-top:10px;border:none;border-radius:10px;background:#00c853;color:white;font-weight:bold;}
+button{width:100%;padding:10px;margin-top:8px;border:none;border-radius:8px;background:#00c853;color:white;}
 .summary{display:flex;flex-wrap:wrap;justify-content:space-between;}
 .small-card{background:#1e3354;padding:10px;margin:5px 0;border-radius:8px;width:48%;text-align:center;}
 .navbar{position:fixed;bottom:0;width:100%;background:black;display:flex;justify-content:space-around;padding:10px 0;}
-.navbar div{color:white;text-align:center;font-size:14px;}
+.navbar div{color:white;font-size:14px;}
 .hidden{display:none;}
-.deleteBtn{background:red;margin-top:5px;}
-.editBtn{background:orange;margin-top:5px;}
+.editBtn{background:orange;}
+.deleteBtn{background:red;}
 </style>
 </head>
 
@@ -31,45 +32,48 @@ button{width:100%;padding:12px;margin-top:10px;border:none;border-radius:10px;ba
 <button onclick="login()">Login</button>
 </div>
 
+<!-- DAILY SCREEN -->
 <div id="dailyScreen" class="hidden">
 
 <div class="card">
-<h2>CNG Settings</h2>
+<h3>CNG Settings</h3>
 <input type="number" id="mileage" placeholder="Mileage (KM per Liter)">
 <input type="number" id="tankCapacity" value="4" placeholder="Tank Capacity (Liter)">
 </div>
 
 <div class="card">
-<h2>Daily Entry</h2>
+<h3>Daily Entry</h3>
 <input type="date" id="date">
 <input type="number" id="km" placeholder="KM Driven">
 <input type="number" id="earning" placeholder="Earning ₹">
-<input type="number" id="cngFilled" placeholder="CNG Filled (Liter)">
+<input type="number" id="fuel" placeholder="Fuel Filled (Liter)">
 <button onclick="saveEntry()">Save Entry</button>
 </div>
 
 <div class="card">
-<h2>Summary</h2>
+<h3>Summary</h3>
 <div class="summary">
 <div class="small-card">Total KM<br><span id="totalKM">0</span></div>
 <div class="small-card">Total ₹<br><span id="totalEarning">0</span></div>
 <div class="small-card">Fuel Used<br><span id="totalFuel">0</span></div>
-<div class="small-card">KM Left<br><span id="kmLeft">0</span></div>
 <div class="small-card">Fuel Expense<br>₹<span id="fuelCost">0</span></div>
+<div class="small-card">Maintenance<br>₹<span id="maintCostTotal">0</span></div>
 <div class="small-card">Net Profit<br>₹<span id="netProfit">0</span></div>
+<div class="small-card">KM Left<br><span id="kmLeft">0</span></div>
 </div>
 </div>
 
 <div class="card">
-<h2>Entries</h2>
+<h3>Entries</h3>
 <div id="entryList"></div>
 </div>
 
 </div>
 
+<!-- MONTHLY -->
 <div id="monthlyScreen" class="hidden">
 <div class="card">
-<h2>Monthly Report</h2>
+<h3>Monthly Report</h3>
 <input type="month" id="monthFilter" onchange="filterMonth()">
 <div id="monthlyData"></div>
 <button onclick="exportPDF()">Export PDF</button>
@@ -77,18 +81,46 @@ button{width:100%;padding:12px;margin-top:10px;border:none;border-radius:10px;ba
 </div>
 </div>
 
+<!-- MAINTENANCE -->
+<div id="maintScreen" class="hidden">
+<div class="card">
+<h3>Add Maintenance</h3>
+<input type="date" id="maintDate">
+<input type="text" id="maintNote" placeholder="Note">
+<input type="number" id="maintCost" placeholder="Cost ₹">
+<button onclick="addMaintenance()">Save Maintenance</button>
+</div>
+
+<div class="card">
+<h3>Maintenance List</h3>
+<div id="maintList"></div>
+</div>
+</div>
+
+<!-- CHART -->
+<div id="chartScreen" class="hidden">
+<div class="card">
+<h3>Business Chart</h3>
+<canvas id="myChart"></canvas>
+</div>
+</div>
+
 <div class="navbar hidden" id="navbar">
 <div onclick="showScreen('daily')">📅 Daily</div>
 <div onclick="showScreen('monthly')">📊 Monthly</div>
+<div onclick="showScreen('maint')">🔧 Maint.</div>
+<div onclick="showScreen('chart')">📈 Chart</div>
 </div>
 
 <script>
 let currentUser="";
 let data=[];
+let maintenance=[];
 let editIndex=-1;
+let chart;
 
 function login(){
-if(!userId.value) return alert("Enter ID");
+if(!userId.value)return alert("Enter ID");
 currentUser=userId.value;
 localStorage.setItem("currentUser",currentUser);
 loginScreen.classList.add("hidden");
@@ -98,8 +130,9 @@ loadData();
 }
 
 function showScreen(s){
-["daily","monthly"].forEach(x=>document.getElementById(x+"Screen").classList.add("hidden"));
+["daily","monthly","maint","chart"].forEach(x=>document.getElementById(x+"Screen").classList.add("hidden"));
 document.getElementById(s+"Screen").classList.remove("hidden");
+if(s==="chart") drawChart();
 }
 
 function saveEntry(){
@@ -107,34 +140,29 @@ const entry={
 date:date.value,
 km:Number(km.value),
 earning:Number(earning.value),
-fuel:Number(cngFilled.value||0)
+fuel:Number(fuel.value||0)
 };
+if(!entry.date)return alert("Enter date");
 
-if(!entry.date||!entry.km||!entry.earning) return alert("Fill all required fields");
-
-if(editIndex===-1){
-data.push(entry);
-}else{
-data[editIndex]=entry;
-editIndex=-1;
-}
+if(editIndex===-1) data.push(entry);
+else{data[editIndex]=entry;editIndex=-1;}
 
 saveData();
 clearForm();
 render();
 }
 
-function editEntry(index){
-const e=data[index];
+function editEntry(i){
+const e=data[i];
 date.value=e.date;
 km.value=e.km;
 earning.value=e.earning;
-cngFilled.value=e.fuel;
-editIndex=index;
+fuel.value=e.fuel;
+editIndex=i;
 }
 
-function deleteEntry(index){
-data.splice(index,1);
+function deleteEntry(i){
+data.splice(i,1);
 saveData();
 render();
 }
@@ -142,12 +170,10 @@ render();
 function render(){
 entryList.innerHTML="";
 let totalKM=0,totalEarning=0,totalFuel=0;
-
 data.forEach((e,i)=>{
 totalKM+=e.km;
 totalEarning+=e.earning;
 totalFuel+=e.fuel;
-
 entryList.innerHTML+=`
 <div style="background:#23395d;padding:8px;margin:5px;border-radius:8px">
 ${e.date} | ${e.km} KM | ₹${e.earning}
@@ -157,71 +183,85 @@ ${e.date} | ${e.km} KM | ₹${e.earning}
 </div>`;
 });
 
-document.getElementById("totalKM").innerText=totalKM;
-document.getElementById("totalEarning").innerText=totalEarning;
-document.getElementById("totalFuel").innerText=totalFuel;
+let maintTotal=maintenance.reduce((sum,m)=>sum+m.cost,0);
 
-const mileageVal=Number(mileage.value||0);
-const tankVal=Number(tankCapacity.value||4);
+totalKMSpan=document.getElementById("totalKM").innerText=totalKM;
+totalEarning.innerText=totalEarning;
+totalFuel.innerText=totalFuel;
 
-const remaining=tankVal-totalFuel;
-document.getElementById("kmLeft").innerText=Math.max(remaining*mileageVal,0);
+let fuelExpense=totalFuel*80;
+fuelCost.innerText=fuelExpense;
+maintCostTotal.innerText=maintTotal;
 
-const fuelExpense=totalFuel*80;
-document.getElementById("fuelCost").innerText=fuelExpense;
-document.getElementById("netProfit").innerText=totalEarning-fuelExpense;
+netProfit.innerText=totalEarning-fuelExpense-maintTotal;
+
+let remaining=(tankCapacity.value||4)-totalFuel;
+kmLeft.innerText=Math.max(remaining*(mileage.value||0),0);
+}
+
+function addMaintenance(){
+const m={
+date:maintDate.value,
+note:maintNote.value,
+cost:Number(maintCost.value||0)
+};
+maintenance.push(m);
+saveData();
+renderMaintenance();
+render();
+}
+
+function renderMaintenance(){
+maintList.innerHTML="";
+maintenance.forEach(m=>{
+maintList.innerHTML+=`<div>${m.date} | ${m.note} | ₹${m.cost}</div>`;
+});
 }
 
 function saveData(){
 localStorage.setItem(currentUser+"_data",JSON.stringify(data));
+localStorage.setItem(currentUser+"_maint",JSON.stringify(maintenance));
 }
 
 function loadData(){
 data=JSON.parse(localStorage.getItem(currentUser+"_data"))||[];
+maintenance=JSON.parse(localStorage.getItem(currentUser+"_maint"))||[];
 render();
+renderMaintenance();
+}
+
+function drawChart(){
+let totalEarning=data.reduce((s,e)=>s+e.earning,0);
+let totalFuel=data.reduce((s,e)=>s+e.fuel,0)*80;
+let maintTotal=maintenance.reduce((s,m)=>s+m.cost,0);
+let profit=totalEarning-totalFuel-maintTotal;
+
+if(chart) chart.destroy();
+
+chart=new Chart(document.getElementById("myChart"),{
+type:"bar",
+data:{
+labels:["Earning","Fuel Expense","Maintenance","Profit"],
+datasets:[{
+data:[totalEarning,totalFuel,maintTotal,profit],
+backgroundColor:["#00e676","#ff5252","#ffab00","#2979ff"]
+}]
+}
+});
 }
 
 function clearForm(){
 date.value="";
 km.value="";
 earning.value="";
-cngFilled.value="";
+fuel.value="";
 }
 
 function filterMonth(){
 let month=monthFilter.value;
 let total=0;
-data.forEach(e=>{if(e.date.startsWith(month)) total+=e.earning;});
+data.forEach(e=>{if(e.date.startsWith(month))total+=e.earning;});
 monthlyData.innerHTML="Total Earning: ₹"+total;
-}
-
-function exportPDF(){
-const {jsPDF}=window.jspdf;
-const doc=new jsPDF();
-let month=monthFilter.value;
-let y=10;
-doc.text("Monthly Report - "+month,10,y);
-y+=10;
-data.forEach(e=>{
-if(e.date.startsWith(month)){
-doc.text(`${e.date} | ₹${e.earning}`,10,y);
-y+=8;
-}
-});
-doc.save("Monthly_Report.pdf");
-}
-
-function exportExcel(){
-let month=monthFilter.value;
-let rows=[["Date","KM","Earning","Fuel(L)"]];
-data.forEach(e=>{
-if(e.date.startsWith(month))
-rows.push([e.date,e.km,e.earning,e.fuel]);
-});
-let wb=XLSX.utils.book_new();
-let ws=XLSX.utils.aoa_to_sheet(rows);
-XLSX.utils.book_append_sheet(wb,ws,"Report");
-XLSX.writeFile(wb,"Monthly_Report.xlsx");
 }
 </script>
 
