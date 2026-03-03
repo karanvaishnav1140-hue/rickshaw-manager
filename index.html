@@ -15,8 +15,8 @@ body{font-family:Arial;margin:0;background:#f2f2f2;}
 .header{background:#007bff;color:white;padding:15px;text-align:center;}
 .container{padding:15px;}
 .box{background:white;padding:15px;margin-bottom:15px;border-radius:10px;}
-input,select,button{padding:8px;margin:5px 0;width:100%;}
-button{background:#28a745;color:white;border:none;border-radius:5px;}
+input,select,button{padding:10px;margin:5px 0;width:100%;border-radius:5px;border:1px solid #ccc;}
+button{background:#28a745;color:white;border:none;}
 .delete{background:red;}
 table{width:100%;border-collapse:collapse;}
 th,td{border:1px solid #ddd;padding:6px;text-align:center;}
@@ -80,20 +80,25 @@ th{background:#007bff;color:white;}
 
 <script>
 
-let records=JSON.parse(localStorage.getItem("rickshawPro"))||[];
-let earningChart,profitChart;
+let records = JSON.parse(localStorage.getItem("rickshawPro")) || [];
+let earningChart, profitChart;
 
 function save(){
-let date=date.value;
-let km=parseFloat(document.getElementById("km").value);
-let earning=parseFloat(document.getElementById("earning").value);
-let fuel=parseFloat(document.getElementById("fuel").value);
+let date = document.getElementById("date").value;
+let km = parseFloat(document.getElementById("km").value);
+let earning = parseFloat(document.getElementById("earning").value);
+let fuel = parseFloat(document.getElementById("fuel").value);
 
-if(!date||!km||!earning||!fuel){alert("Fill all fields");return;}
+if(!date || isNaN(km) || isNaN(earning) || isNaN(fuel)){
+alert("Please fill all fields properly");
+return;
+}
 
-let profit=earning-fuel;
+let profit = earning - fuel;
+
 records.push({date,km,earning,fuel,profit});
-localStorage.setItem("rickshawPro",JSON.stringify(records));
+localStorage.setItem("rickshawPro", JSON.stringify(records));
+
 clearForm();
 display();
 }
@@ -106,19 +111,21 @@ document.getElementById("fuel").value="";
 }
 
 function display(){
-let tbody=document.getElementById("data");
+
+let tbody = document.getElementById("data");
 tbody.innerHTML="";
 
-let month=document.getElementById("monthFilter").value;
-let filtered=records;
+let month = document.getElementById("monthFilter").value;
+let filtered = records;
 
 if(month){
-filtered=records.filter(r=>r.date.startsWith(month));
+filtered = records.filter(r => r.date.startsWith(month));
 }
 
 let totalE=0,totalF=0,totalKM=0;
 
-filtered.forEach((r,i)=>{
+filtered.forEach((r,index)=>{
+
 totalE+=r.earning;
 totalF+=r.fuel;
 totalKM+=r.km;
@@ -131,13 +138,13 @@ tbody.innerHTML+=`
 <td>₹${r.fuel}</td>
 <td>₹${r.profit}</td>
 <td>
-<button onclick="editRecord(${i})">Edit</button>
-<button onclick="deleteRecord(${i})" class="delete">Delete</button>
+<button onclick="editRecord(${records.indexOf(r)})">Edit</button>
+<button onclick="deleteRecord(${records.indexOf(r)})" class="delete">Delete</button>
 </td>
 </tr>`;
 });
 
-document.getElementById("monthly").innerHTML=
+document.getElementById("monthly").innerHTML =
 "Total KM: "+totalKM+
 "<br>Total Earning: ₹"+totalE+
 "<br>Total Fuel: ₹"+totalF+
@@ -147,54 +154,59 @@ drawCharts(filtered);
 }
 
 function deleteRecord(index){
-if(confirm("Delete entry?")){
+if(confirm("Delete this entry?")){
 records.splice(index,1);
-localStorage.setItem("rickshawPro",JSON.stringify(records));
+localStorage.setItem("rickshawPro", JSON.stringify(records));
 display();
 }
 }
 
 function editRecord(index){
-let r=records[index];
-document.getElementById("date").value=r.date;
-document.getElementById("km").value=r.km;
-document.getElementById("earning").value=r.earning;
-document.getElementById("fuel").value=r.fuel;
+let r = records[index];
+
+document.getElementById("date").value = r.date;
+document.getElementById("km").value = r.km;
+document.getElementById("earning").value = r.earning;
+document.getElementById("fuel").value = r.fuel;
+
 records.splice(index,1);
-localStorage.setItem("rickshawPro",JSON.stringify(records));
+localStorage.setItem("rickshawPro", JSON.stringify(records));
 display();
 }
 
 function drawCharts(data){
-let labels=data.map(r=>r.date);
-let earnings=data.map(r=>r.earning);
-let profits=data.map(r=>r.profit);
+
+let labels = data.map(r=>r.date);
+let earnings = data.map(r=>r.earning);
+let profits = data.map(r=>r.profit);
 
 if(earningChart) earningChart.destroy();
 if(profitChart) profitChart.destroy();
 
-earningChart=new Chart(document.getElementById("earningChart"),{
+earningChart = new Chart(document.getElementById("earningChart"),{
 type:'bar',
 data:{labels:labels,datasets:[{label:'Earnings ₹',data:earnings}]}
 });
 
-profitChart=new Chart(document.getElementById("profitChart"),{
+profitChart = new Chart(document.getElementById("profitChart"),{
 type:'line',
 data:{labels:labels,datasets:[{label:'Profit ₹',data:profits}]}
 });
 }
 
 function exportCSV(){
+
 let csv="Date,KM,Earning,Fuel,Profit\n";
+
 records.forEach(r=>{
 csv+=`${r.date},${r.km},${r.earning},${r.fuel},${r.profit}\n`;
 });
 
-let blob=new Blob([csv],{type:"text/csv"});
-let url=URL.createObjectURL(blob);
-let a=document.createElement("a");
-a.href=url;
-a.download="rickshaw_data.csv";
+let blob = new Blob([csv], {type:"text/csv"});
+let url = URL.createObjectURL(blob);
+let a = document.createElement("a");
+a.href = url;
+a.download = "rickshaw_data.csv";
 a.click();
 }
 
