@@ -5,9 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Rickshaw WorkSmart</title>
 
+<!-- Libraries -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 body{margin:0;font-family:Arial;background:#0f1b2d;color:white;}
@@ -26,6 +27,7 @@ button{width:100%;padding:10px;margin-top:8px;border:none;border-radius:8px;back
 
 <body>
 
+<!-- LOGIN -->
 <div id="loginScreen" class="card">
 <h2>Rickshaw WorkSmart</h2>
 <input type="text" id="userId" placeholder="Enter Your ID">
@@ -38,7 +40,7 @@ button{width:100%;padding:10px;margin-top:8px;border:none;border-radius:8px;back
 <div class="card">
 <h3>CNG Settings</h3>
 <input type="number" id="mileage" placeholder="Mileage (KM per Liter)">
-<input type="number" id="tankCapacity" value="4" placeholder="Tank Capacity (Liter)">
+<input type="number" id="tankCapacity" value="4">
 </div>
 
 <div class="card">
@@ -46,7 +48,6 @@ button{width:100%;padding:10px;margin-top:8px;border:none;border-radius:8px;back
 <input type="date" id="date">
 <input type="number" id="km" placeholder="KM Driven">
 <input type="number" id="earning" placeholder="Earning ₹">
-<input type="number" id="fuel" placeholder="Fuel Filled (Liter)">
 <button onclick="saveEntry()">Save Entry</button>
 </div>
 
@@ -88,7 +89,7 @@ button{width:100%;padding:10px;margin-top:8px;border:none;border-radius:8px;back
 <input type="date" id="maintDate">
 <input type="text" id="maintNote" placeholder="Note">
 <input type="number" id="maintCost" placeholder="Cost ₹">
-<button onclick="addMaintenance()">Save Maintenance</button>
+<button onclick="addMaintenance()">Save</button>
 </div>
 
 <div class="card">
@@ -101,10 +102,11 @@ button{width:100%;padding:10px;margin-top:8px;border:none;border-radius:8px;back
 <div id="chartScreen" class="hidden">
 <div class="card">
 <h3>Business Chart</h3>
-<canvas id="myChart"></canvas>
+<canvas id="chartCanvas"></canvas>
 </div>
 </div>
 
+<!-- NAVIGATION -->
 <div class="navbar hidden" id="navbar">
 <div onclick="showScreen('daily')">📅 Daily</div>
 <div onclick="showScreen('monthly')">📊 Monthly</div>
@@ -114,13 +116,14 @@ button{width:100%;padding:10px;margin-top:8px;border:none;border-radius:8px;back
 
 <script>
 let currentUser="";
-let data=[];
+let entries=[];
 let maintenance=[];
 let editIndex=-1;
 let chart;
 
+// LOGIN
 function login(){
-if(!userId.value)return alert("Enter ID");
+if(!userId.value) return alert("Enter ID");
 currentUser=userId.value;
 localStorage.setItem("currentUser",currentUser);
 loginScreen.classList.add("hidden");
@@ -129,51 +132,77 @@ navbar.classList.remove("hidden");
 loadData();
 }
 
+// SCREEN SWITCH
 function showScreen(s){
-["daily","monthly","maint","chart"].forEach(x=>document.getElementById(x+"Screen").classList.add("hidden"));
+["daily","monthly","maint","chart"].forEach(x=>{
+document.getElementById(x+"Screen").classList.add("hidden");
+});
 document.getElementById(s+"Screen").classList.remove("hidden");
 if(s==="chart") drawChart();
 }
 
+// SAVE ENTRY
 function saveEntry(){
-const entry={
+let entry={
 date:date.value,
 km:Number(km.value),
-earning:Number(earning.value),
-fuel:Number(fuel.value||0)
+earning:Number(earning.value)
 };
-if(!entry.date)return alert("Enter date");
+if(!entry.date||!entry.km||!entry.earning) return alert("Fill all fields");
 
-if(editIndex===-1) data.push(entry);
-else{data[editIndex]=entry;editIndex=-1;}
+if(editIndex===-1) entries.push(entry);
+else{ entries[editIndex]=entry; editIndex=-1; }
 
 saveData();
 clearForm();
 render();
 }
 
+// EDIT
 function editEntry(i){
-const e=data[i];
+let e=entries[i];
 date.value=e.date;
 km.value=e.km;
 earning.value=e.earning;
-fuel.value=e.fuel;
 editIndex=i;
 }
 
+// DELETE
 function deleteEntry(i){
-data.splice(i,1);
+entries.splice(i,1);
 saveData();
 render();
 }
 
+// RENDER CALCULATIONS
 function render(){
-entryList.innerHTML="";
-let totalKM=0,totalEarning=0,totalFuel=0;
-data.forEach((e,i)=>{
+let totalKM=0,totalEarning=0;
+entries.forEach(e=>{
 totalKM+=e.km;
 totalEarning+=e.earning;
-totalFuel+=e.fuel;
+});
+
+let mileageVal=Number(mileage.value||0);
+let tankVal=Number(tankCapacity.value||4);
+
+let fuelUsed=mileageVal>0?(totalKM/mileageVal):0;
+let remaining=tankVal-fuelUsed;
+if(remaining<0) remaining=0;
+
+let fuelExpense=fuelUsed*80;
+let maintTotal=maintenance.reduce((s,m)=>s+m.cost,0);
+let profit=totalEarning-fuelExpense-maintTotal;
+
+totalKM.innerText=totalKM;
+totalEarning.innerText=totalEarning;
+totalFuel.innerText=fuelUsed.toFixed(2);
+fuelCost.innerText=fuelExpense.toFixed(0);
+maintCostTotal.innerText=maintTotal;
+netProfit.innerText=profit.toFixed(0);
+kmLeft.innerText=(remaining*mileageVal).toFixed(1);
+
+entryList.innerHTML="";
+entries.forEach((e,i)=>{
 entryList.innerHTML+=`
 <div style="background:#23395d;padding:8px;margin:5px;border-radius:8px">
 ${e.date} | ${e.km} KM | ₹${e.earning}
@@ -182,25 +211,11 @@ ${e.date} | ${e.km} KM | ₹${e.earning}
 <button class="deleteBtn" onclick="deleteEntry(${i})">Delete</button>
 </div>`;
 });
-
-let maintTotal=maintenance.reduce((sum,m)=>sum+m.cost,0);
-
-totalKMSpan=document.getElementById("totalKM").innerText=totalKM;
-totalEarning.innerText=totalEarning;
-totalFuel.innerText=totalFuel;
-
-let fuelExpense=totalFuel*80;
-fuelCost.innerText=fuelExpense;
-maintCostTotal.innerText=maintTotal;
-
-netProfit.innerText=totalEarning-fuelExpense-maintTotal;
-
-let remaining=(tankCapacity.value||4)-totalFuel;
-kmLeft.innerText=Math.max(remaining*(mileage.value||0),0);
 }
 
+// MAINTENANCE
 function addMaintenance(){
-const m={
+let m={
 date:maintDate.value,
 note:maintNote.value,
 cost:Number(maintCost.value||0)
@@ -218,50 +233,87 @@ maintList.innerHTML+=`<div>${m.date} | ${m.note} | ₹${m.cost}</div>`;
 });
 }
 
-function saveData(){
-localStorage.setItem(currentUser+"_data",JSON.stringify(data));
-localStorage.setItem(currentUser+"_maint",JSON.stringify(maintenance));
+// MONTH FILTER
+function filterMonth(){
+let month=monthFilter.value;
+let total=0;
+entries.forEach(e=>{
+if(e.date.startsWith(month)) total+=e.earning;
+});
+monthlyData.innerHTML="Total Earning: ₹"+total;
 }
 
-function loadData(){
-data=JSON.parse(localStorage.getItem(currentUser+"_data"))||[];
-maintenance=JSON.parse(localStorage.getItem(currentUser+"_maint"))||[];
-render();
-renderMaintenance();
+// EXPORT PDF
+function exportPDF(){
+const {jsPDF}=window.jspdf;
+const doc=new jsPDF();
+let month=monthFilter.value;
+let y=10;
+doc.text("Monthly Report - "+month,10,y);
+y+=10;
+entries.forEach(e=>{
+if(e.date.startsWith(month)){
+doc.text(`${e.date} | ₹${e.earning}`,10,y);
+y+=8;
+}
+});
+doc.save("Monthly_Report.pdf");
 }
 
+// EXPORT EXCEL
+function exportExcel(){
+let month=monthFilter.value;
+let rows=[["Date","KM","Earning"]];
+entries.forEach(e=>{
+if(e.date.startsWith(month))
+rows.push([e.date,e.km,e.earning]);
+});
+let wb=XLSX.utils.book_new();
+let ws=XLSX.utils.aoa_to_sheet(rows);
+XLSX.utils.book_append_sheet(wb,ws,"Report");
+XLSX.writeFile(wb,"Monthly_Report.xlsx");
+}
+
+// CHART
 function drawChart(){
-let totalEarning=data.reduce((s,e)=>s+e.earning,0);
-let totalFuel=data.reduce((s,e)=>s+e.fuel,0)*80;
+let totalEarning=entries.reduce((s,e)=>s+e.earning,0);
+let mileageVal=Number(mileage.value||0);
+let fuelUsed=mileageVal>0?(entries.reduce((s,e)=>s+e.km,0)/mileageVal):0;
+let fuelExpense=fuelUsed*80;
 let maintTotal=maintenance.reduce((s,m)=>s+m.cost,0);
-let profit=totalEarning-totalFuel-maintTotal;
+let profit=totalEarning-fuelExpense-maintTotal;
 
 if(chart) chart.destroy();
 
-chart=new Chart(document.getElementById("myChart"),{
+chart=new Chart(chartCanvas,{
 type:"bar",
 data:{
 labels:["Earning","Fuel Expense","Maintenance","Profit"],
 datasets:[{
-data:[totalEarning,totalFuel,maintTotal,profit],
+data:[totalEarning,fuelExpense,maintTotal,profit],
 backgroundColor:["#00e676","#ff5252","#ffab00","#2979ff"]
 }]
 }
 });
 }
 
+// SAVE & LOAD
+function saveData(){
+localStorage.setItem(currentUser+"_entries",JSON.stringify(entries));
+localStorage.setItem(currentUser+"_maint",JSON.stringify(maintenance));
+}
+
+function loadData(){
+entries=JSON.parse(localStorage.getItem(currentUser+"_entries"))||[];
+maintenance=JSON.parse(localStorage.getItem(currentUser+"_maint"))||[];
+render();
+renderMaintenance();
+}
+
 function clearForm(){
 date.value="";
 km.value="";
 earning.value="";
-fuel.value="";
-}
-
-function filterMonth(){
-let month=monthFilter.value;
-let total=0;
-data.forEach(e=>{if(e.date.startsWith(month))total+=e.earning;});
-monthlyData.innerHTML="Total Earning: ₹"+total;
 }
 </script>
 
